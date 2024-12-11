@@ -20,4 +20,19 @@ const insertLetter = {
   }
 }
 
+const removeLetter = {
+  next: (event: KeyboardEvent) => {
+    const pressedKey = event.key;
+
+    if (pressedKey === "Backspace") {
+      letterIndex--;
+
+      const letterBox = letterRows[letterRow].children[letterIndex];
+      letterBox.textContent = "";
+      letterBox.classList.remove("filled-letter");
+    }
+  }
+}
+
 onKeyUp$.subscribe(insertLetter);
+onKeyUp$.subscribe(removeLetter);
