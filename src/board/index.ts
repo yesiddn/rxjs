@@ -1,42 +1,51 @@
-import { fromEvent, map } from "rxjs";
+import { fromEvent, map, mergeAll } from "rxjs";
 
 const canvas = document.querySelector('#reactive-canvas') as HTMLCanvasElement;
 const cursosPosition = { x: 0, y: 0 };
 
-const onMouseDown$ = fromEvent<MouseEvent>(canvas || document, 'mousedown').pipe(
-  map(
-    (event) => {
-      //console.log(event)
-      //console.log({ x: event.clientX, y: event.clientY });
-      //console.log({ offsetX: canvas.offsetLeft, offsetY: canvas.offsetTop });
+const updateCursorPosition = (event: MouseEvent) => {
+  cursosPosition.x = event.clientX - canvas.offsetLeft;
+  cursosPosition.y = event.clientY - canvas.offsetTop;
+  console.log(cursosPosition);
+}
 
-      cursosPosition.x = event.clientX - canvas.offsetLeft;
-      cursosPosition.y = event.clientY - canvas.offsetTop;
-      console.log(cursosPosition);
-    }
-  )
-);
-const onMouseMove$ = fromEvent(canvas || document, 'mousemove');
+const onMouseDown$ = fromEvent<MouseEvent>(canvas || document, 'mousedown');
+onMouseDown$.subscribe(updateCursorPosition);
+
+const onMouseMove$ = fromEvent<MouseEvent>(canvas || document, 'mousemove');
 const onMouseUp$ = fromEvent(canvas || document, 'mouseup');
 
 onMouseDown$.subscribe();
 
 const canvasContext = canvas.getContext('2d');
 if (canvasContext) {
-  // define el ancho de la línea
-  canvasContext.lineWidth = 5;
+  const paintStroke = (event: MouseEvent) => {
+    // define el ancho de la línea
+    canvasContext.lineWidth = 5;
 
-  // define el color de la línea
-  canvasContext.strokeStyle = 'white';
+    // define el color de la línea
+    canvasContext.strokeStyle = 'white';
 
-  // indica que se va a dibujar una línea
-  canvasContext.beginPath();
-  // mueve el punto de inicio de la línea
-  canvasContext.moveTo(0, 0);
-  // indica el punto final de la línea
-  canvasContext.lineTo(100, 100);
-  // dibuja la línea
-  canvasContext.stroke();
-  // cierra la ruta actual
-  canvasContext.closePath();
+    // indica que se va a dibujar una línea
+    canvasContext.beginPath();
+    // mueve el punto de inicio de la línea
+    canvasContext.moveTo(cursosPosition.x, cursosPosition.y);
+
+    updateCursorPosition(event);
+
+    // indica el punto final de la línea
+    canvasContext.lineTo(cursosPosition.x, cursosPosition.y);
+    // dibuja la línea
+    canvasContext.stroke();
+    // cierra la ruta actual
+    canvasContext.closePath();
+  }
+
+  const startPaint$ = onMouseDown$.pipe(
+    map(() => onMouseMove$),
+    mergeAll()
+  );
+
+  startPaint$.subscribe(paintStroke);
 }
+
