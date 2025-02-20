@@ -1,4 +1,4 @@
-import { fromEvent, map, mergeAll } from "rxjs";
+import { fromEvent, map, mergeAll, takeUntil, throttleTime } from "rxjs";
 
 const canvas = document.querySelector('#reactive-canvas') as HTMLCanvasElement;
 const cursosPosition = { x: 0, y: 0 };
@@ -12,8 +12,11 @@ const updateCursorPosition = (event: MouseEvent) => {
 const onMouseDown$ = fromEvent<MouseEvent>(canvas || document, 'mousedown');
 onMouseDown$.subscribe(updateCursorPosition);
 
-const onMouseMove$ = fromEvent<MouseEvent>(canvas || document, 'mousemove');
 const onMouseUp$ = fromEvent(canvas || document, 'mouseup');
+const onMouseMove$ = fromEvent<MouseEvent>(canvas || document, 'mousemove').pipe(
+  // throttleTime(40), 
+  takeUntil(onMouseUp$)
+);
 
 onMouseDown$.subscribe();
 
@@ -21,7 +24,13 @@ const canvasContext = canvas.getContext('2d');
 if (canvasContext) {
   const paintStroke = (event: MouseEvent) => {
     // define el ancho de la línea
-    canvasContext.lineWidth = 5;
+    canvasContext.lineWidth = 8;
+
+    // define el estilo de la linea
+    canvasContext.lineJoin = 'round';
+
+    // define el estilo del inicio de la linea
+    canvasContext.lineCap = 'round';
 
     // define el color de la línea
     canvasContext.strokeStyle = 'white';
