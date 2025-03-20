@@ -1,6 +1,7 @@
-import { fromEvent, map, mergeAll, takeUntil, throttleTime } from "rxjs";
+import { fromEvent, map, merge, mergeAll, takeUntil, throttleTime } from "rxjs";
 
 const canvas = document.querySelector('#reactive-canvas') as HTMLCanvasElement;
+const restartButton = document.querySelector('#restart-button') as HTMLButtonElement;
 const cursosPosition = { x: 0, y: 0 };
 
 const updateCursorPosition = (event: MouseEvent) => {
@@ -55,6 +56,19 @@ if (canvasContext) {
     mergeAll()
   );
 
-  startPaint$.subscribe(paintStroke);
+  let startPaintSubscription = startPaint$.subscribe(paintStroke);
+
+  const onLoadWindow$ = fromEvent(window, 'load');
+  const onRestartClick$ = fromEvent(restartButton, 'click');
+
+  const restartWitheBoard$ = merge(onLoadWindow$, onRestartClick$);
+
+  restartWitheBoard$.subscribe(() => {
+    // se desuscribe de los observables para evitar fugas de memoria
+    startPaintSubscription.unsubscribe();
+    canvasContext.clearRect(0, 0, canvas.width, canvas.height);
+
+    startPaintSubscription = startPaint$.subscribe(paintStroke);
+  });
 }
 
