@@ -1,4 +1,4 @@
-import { filter, fromEvent, map, Subject, takeUntil } from "rxjs";
+import { filter, fromEvent, map, merge, Subject, takeUntil } from "rxjs";
 
 const WORDS_LIST = require("./wordsList.json");
 
@@ -7,13 +7,12 @@ const letterRows = Array.from(document.querySelectorAll(".letter-row"));
 const messageText = document.querySelector("#message-text");
 
 const onKeyUp$ = fromEvent<KeyboardEvent>(document, "keyup");
-let letterIndex = 0;
-let letterRow = 0;
+let letterIndex: number;
+let letterRow: number;
 let userAnswer: string[] = [];
 
 const getRandomWord = () => WORDS_LIST[Math.floor(Math.random() * WORDS_LIST.length)];
-const rightWord = getRandomWord();
-console.log(rightWord);
+let rightWord: string;
 
 const userWinOrLose$ = new Subject<void>();
 
@@ -58,16 +57,21 @@ const removeLetter = {
 
 const checkWord$ = onKeyUp$.pipe(
   map((event) => event.key),
-  filter((key) => key === 'Enter' && letterIndex === 5 && letterRow <= 5)
+  filter((key) => key === 'Enter' && letterRow <= 6)
 );
 
 const checkWord = {
   next: () => {
     if (userAnswer.length < rightWord.length && messageText) {
-      messageText.textContent = 'Keep going!';
+      // decir qrue falta una letra
+      messageText.textContent = userAnswer.length === 4 ? '1 letter is missing' : `${5 - userAnswer.length} letters are missing`;
       return;
     }
 
+    if (!WORDS_LIST.includes(userAnswer.join('')) && messageText) {
+      messageText.textContent = 'This word does not exist';
+      return;
+    }
     // tambien se puede usar userAnswer.map
     for (let i = 0; i < 5; i++) {
       let letterColor = '';
@@ -110,14 +114,41 @@ const checkWord = {
   }
 }
 
-userWinOrLose$.subscribe(() => {
-  let letters = [...letterRows[letterRow].children]
-  letters.forEach(element => element.classList.add('letter-green'));
-})
+// userWinOrLose$.subscribe(() => {
+//   let letters = [...letterRows[letterRow].children]
+//   letters.forEach(element => element.classList.add('letter-green'));
+// })
 
+const onWindowLoad$ = fromEvent(window, 'load');
+const onRestartClick$ = fromEvent(restartButton || document, 'click');
+
+const restartGame$ = merge(onWindowLoad$, onRestartClick$);
+
+restartGame$.subscribe(() => {
+  // se limpian los campos
+  letterRows.forEach((row) => {
+    let letters = [...row.children];
+    letters.forEach((element) => {
+      element.textContent = '';
+      element.classList.add('letter');
+      element.classList.remove('filled-letter', 'letter-green', 'letter-yellow', 'letter-grey');
+    });
+  });
+
+  letterIndex = 0;
+  letterRow = 0;
+  userAnswer = [];
+  if (messageText) messageText.textContent = '';
+  rightWord = getRandomWord();
+
+  console.log(rightWord);
+
+  if (restartButton) restartButton.disabled = true;
+
+  let insertLetterSubscription = insertLetter$.pipe(takeUntil(userWinOrLose$)).subscribe(insertLetter);
+  let checkWordSubscription = checkWord$.pipe(takeUntil(userWinOrLose$)).subscribe(checkWord);
+  let removeLetterSubscription = removeLetter$.pipe(takeUntil(userWinOrLose$)).subscribe(removeLetter);
+});
 // onKeyUp$.subscribe(insertLetter);
 // onKeyUp$.subscribe(removeLetter);
 // onKeyUp$.subscribe(checkWord);
-insertLetter$.pipe(takeUntil(userWinOrLose$)).subscribe(insertLetter);
-checkWord$.pipe(takeUntil(userWinOrLose$)).subscribe(checkWord);
-removeLetter$.pipe(takeUntil(userWinOrLose$)).subscribe(removeLetter);
